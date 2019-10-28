@@ -1,5 +1,5 @@
 // set the dimensions and margins of the graph
-var margin = { top: 30, right: 30, bottom: 30, left: 60 },
+var margin = { top: 20, right: 30, bottom: 30, left: 100 },
   width = 1200,
   height = 625;
 
@@ -20,82 +20,139 @@ const svg = d3
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-//set up the scales
-const x = d3
-  .scaleLinear()
-  .domain([2.6, 75.1])
-  .rangeRound([600, 860]);
-
-const color = d3
-  .scaleThreshold()
-  .domain(d3.range(2.6, 75.1, (75.1 - 2.6) / 8))
-  .range(d3.schemeBlues[9]);
-
-//attach the legend
-const g = svg
-  .append("g")
-  .attr("class", "key")
-  .attr("id", "legend")
-  .attr("transform", "translate(0,40)");
-
-g.selectAll("rect")
-  .data(
-    color.range().map(function(d) {
-      d = color.invertExtent(d);
-      if (d[0] == null) d[0] = x.domain()[0];
-      if (d[1] == null) d[1] = x.domain()[1];
-      return d;
-    })
-  )
-  .enter()
-  .append("rect")
-  .attr("height", 8)
-  .attr("x", function(d) {
-    return x(d[0]);
-  })
-  .attr("width", function(d) {
-    return x(d[1]) - x(d[0]);
-  })
-  .attr("fill", function(d) {
-    return color(d[0]);
-  });
-
-g.append("text")
-  .attr("class", "caption")
-  .attr("x", x.range()[0])
-  .attr("y", -6)
-  .attr("fill", "#000")
-  .attr("text-anchor", "start")
-  .attr("font-weight", "bold");
-
-g.call(
-  d3
-    .axisBottom(x)
-    .tickSize(13)
-    .tickFormat(function(x) {
-      return Math.round(x) + "%";
-    })
-    .tickValues(color.domain())
-)
-  .select(".domain")
-  .remove();
-
 //draw counties
 
 const drawChart = (us, edu) => {
+  //get min and max
+  const minEducation = d3.min(edu, edu => edu.bachelorsOrHigher);
+  const maxEducation = d3.max(edu, edu => edu.bachelorsOrHigher);
+
+  console.log(minEducation);
+  console.log(maxEducation);
+
+  //set up the scales
+  const x = d3
+    .scaleLinear()
+    .domain([minEducation, maxEducation])
+    .rangeRound([600, 850]);
+
+  const color = d3
+    .scaleThreshold()
+    .domain(
+      d3.range(minEducation, maxEducation, (maxEducation - minEducation) / 8)
+    )
+    .range(d3.schemeBlues[9]);
+
+  //attach the legend
+  const g = svg
+    .append("g")
+    .attr("class", "key")
+    .attr("id", "legend")
+    .attr("transform", "translate(0,40)");
+
+  g.selectAll("rect")
+    .data(
+      color.range().map(function(d) {
+        d = color.invertExtent(d);
+        if (d[0] == null) d[0] = x.domain()[0];
+        if (d[1] == null) d[1] = x.domain()[1];
+        return d;
+      })
+    )
+    .enter()
+    .append("rect")
+    .attr("height", 8)
+    .attr("x", function(d) {
+      return x(d[0]);
+    })
+    .attr("width", function(d) {
+      return x(d[1]) - x(d[0]);
+    })
+    .attr("fill", function(d) {
+      return color(d[0]);
+    });
+
+  g.append("text")
+    .attr("class", "caption")
+    .attr("x", x.range()[0])
+    .attr("y", -6)
+    .attr("fill", "#000")
+    .attr("text-anchor", "start")
+    .attr("font-weight", "bold");
+
+  g.call(
+    d3
+      .axisBottom(x)
+      .tickSize(13)
+      .tickFormat(function(x) {
+        return Math.round(x) + "%";
+      })
+      .tickValues(color.domain())
+  )
+    .select(".domain")
+    .remove();
+
+  // attach the tooltip
+
+  const tooltip = d3
+    .select("#chart")
+    .append("div")
+    .attr("class", "tooltip")
+    .attr("id", "tooltip")
+
+    .style("opacity", 0);
+
+  
+
+  // mouse handlers
+
+  const handleMouseOver = function(d, i) {
+    const eduData = edu.find(o => o.fips === d.id)
+
+    d3.select(this)
+      .transition()
+      .duration("0")
+      .attr("opacity", ".85")
+      .attr("fill", "grey");
+
+    tooltip
+      .transition("0")
+      .style("opacity", "0.9")
+      .style("left", event.clientX + "px")
+      .style("top", event.clientY +20 + "px")
+      .attr('data-education', eduData.bachelorsOrHigher)
+    tooltip.html(`${eduData.area_name}, ${eduData.state} <br/> ${eduData.bachelorsOrHigher}`);
+  };
+
+  const handleMouseOut = function(d, i) {
+    d3.select(this)
+      .transition()
+      .duration("")
+      .attr("opacity", "1")
+      .attr("fill", d =>
+        color(edu.find(o => o.fips === d.id).bachelorsOrHigher)
+      );
+    tooltip.transition("0").style("opacity", 0);
+  };
+
   //create the counties
- 
+
   svg
     .append("g")
+    .attr("id", "Counties")
     .selectAll("path")
     .data(topojson.feature(us, us.objects.counties).features)
     .join("path")
     .attr("fill", d => color(edu.find(o => o.fips === d.id).bachelorsOrHigher))
     .attr("class", "county")
     .attr("data-fips", d => d.id)
+    .attr("stroke", "white")
+    .attr("stroke-linejoin", "round")
     .attr("data-education", d => {
       return edu.find(o => o.fips === d.id).bachelorsOrHigher;
     })
+    .on("mouseover", handleMouseOver)
+    .on("mouseout", handleMouseOut)
     .attr("d", path);
 
   //overlay the state borders
@@ -103,7 +160,8 @@ const drawChart = (us, edu) => {
     .append("path")
     .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
     .attr("fill", "none")
-    .attr("stroke", "white")
+    .attr("id", "States")
+    .attr("stroke", "black")
     .attr("stroke-linejoin", "round")
     .attr("d", path);
 };
