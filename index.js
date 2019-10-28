@@ -20,7 +20,7 @@ const svg = d3
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-//set up the sacles
+//set up the scales
 const x = d3
   .scaleLinear()
   .domain([2.6, 75.1])
@@ -82,39 +82,54 @@ g.call(
 
 //draw counties
 
-const drawCounties = us => {
-  console.log(us.objects.counties);
-  console.log(topojson.feature(us, us.objects.counties).features);
-
-
+const drawChart = (us, edu) => {
+  //create the counties
+ 
   svg
     .append("g")
     .selectAll("path")
     .data(topojson.feature(us, us.objects.counties).features)
     .join("path")
-    .attr("fill", "red")
-    .attr('class', 'county')
-    .attr('data-fips', d=> d.id)
-    .attr("d", path)
- 
+    .attr("fill", d => color(edu.find(o => o.fips === d.id).bachelorsOrHigher))
+    .attr("class", "county")
+    .attr("data-fips", d => d.id)
+    .attr("data-education", d => {
+      return edu.find(o => o.fips === d.id).bachelorsOrHigher;
+    })
+    .attr("d", path);
 
-    svg
+  //overlay the state borders
+  svg
     .append("path")
     .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
     .attr("fill", "none")
     .attr("stroke", "white")
     .attr("stroke-linejoin", "round")
     .attr("d", path);
-
-
-
-
 };
-fetch(
-  "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json"
-)
-  .then(response => response.json())
-  .then(json => {
-    drawCounties(json);
-  })
-  .catch(error => console.log(error));
+
+// const counties = fetch(
+//   "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json"
+// )
+//   .then(response => response.json())
+//   .then(json => {
+//     drawCounties(json);
+//   })
+//   .catch(error => console.log(error));
+
+//fetch data and draw char
+(async function main() {
+  try {
+    let [counties, eduction] = await Promise.all([
+      fetch(
+        "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json"
+      ).then(response => response.json()),
+      fetch(
+        "https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json"
+      ).then(response => response.json())
+    ]);
+    drawChart(counties, eduction);
+  } catch (err) {
+    console.log(err);
+  }
+})();
