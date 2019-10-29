@@ -18,9 +18,14 @@ const svg = d3
   .attr("width", width - margin.left - margin.right)
   .attr("height", height - margin.top - margin.bottom)
   .append("g")
-  .attr("transform",
-  "translate(60,"+margin.top +")")
- 
+  .attr("transform", "translate(60," + margin.top + ")");
+
+function getMeasurements(el) {
+  const rect = document.getElementById(el).getBoundingClientRect();
+
+  console.log(rect.width);
+  return rect;
+}
 
 //draw counties
 
@@ -45,30 +50,29 @@ const drawChart = (us, edu) => {
     )
     .range(d3.schemeBlues[9]);
 
-    //
-const heading = svg.append('g')
+  //attach heading and title
+  const heading = svg.append("g");
+
+  heading
+    .append("text")
+    .text(title)
+    .attr("id", "heading")
+    .attr("font-family", "sans-serif")
+    .attr("font-size", "40px")
+    .attr("fill", "grey")
+    .style("text-anchor", "center")
+    .attr("transform", `translate(${((width - getMeasurements('heading').width)/2)-margin.left*2},0)`);
 
 
-
-heading
-.append('text')
-.text(title)
-.attr("font-family", "sans-serif")
-.attr("font-size", "40px")
-.attr("fill", "grey")
-.style("text-anchor", "center")
-.attr("transform",
-"translate(220,0)")
-
-heading
-.append('text')
-.text(desc)
-.attr("font-family", "sans-serif")
-.attr("font-size", "16px")
-.attr("fill", "grey")
-.style("text-anchor", "center")
-.attr("transform",
-"translate(235,35)")
+  heading
+    .append("text")
+    .text(desc)
+    .attr("id", "description")
+    .attr("font-family", "sans-serif")
+    .attr("font-size", "16px")
+    .attr("fill", "grey")
+    .style("text-anchor", "center")
+    .attr("transform", `translate(${((width - getMeasurements('description').width)/2)-margin.left*2},35)`);
 
   //attach the legend
   const g = svg
@@ -129,12 +133,10 @@ heading
 
     .style("opacity", 0);
 
-  
-
   // mouse handlers
 
   const handleMouseOver = function(d, i) {
-    const eduData = edu.find(o => o.fips === d.id)
+    const eduData = edu.find(o => o.fips === d.id);
 
     d3.select(this)
       .transition()
@@ -145,10 +147,12 @@ heading
     tooltip
       .transition("0")
       .style("opacity", "0.9")
-      .style("left", event.clientX + 20+"px")
-      .style("top", event.clientY -30 + "px")
-      .attr('data-education', eduData.bachelorsOrHigher)
-    tooltip.html(`${eduData.area_name}, ${eduData.state} <br/> ${eduData.bachelorsOrHigher}`);
+      .style("left", event.clientX + 20 + "px")
+      .style("top", event.clientY - 30 + "px")
+      .attr("data-education", eduData.bachelorsOrHigher);
+    tooltip.html(
+      `${eduData.area_name}, ${eduData.state} <br/> ${eduData.bachelorsOrHigher}`
+    );
   };
 
   const handleMouseOut = function(d, i) {
@@ -167,8 +171,7 @@ heading
   svg
     .append("g")
     .attr("id", "Counties")
-    .attr("transform",
-"translate(0,30)")
+    .attr("transform", "translate(0,30)")
     .selectAll("path")
     .data(topojson.feature(us, us.objects.counties).features)
     .join("path")
@@ -187,8 +190,7 @@ heading
   //overlay the state borders
   svg
     .append("path")
-    .attr("transform",
-    "translate(0,30)")
+    .attr("transform", "translate(0,30)")
     .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
     .attr("fill", "none")
     .attr("id", "States")
